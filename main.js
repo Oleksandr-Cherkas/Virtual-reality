@@ -4,11 +4,90 @@ let gl;                         // The webgl context.
 let surface;                    // A surface model
 let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
+
+//вот тут убрать:
 let coordinatesForPoint = [0.1, 0.1];
 let showPoint;
 
+//тут мейби что-то лишнее
+let camera;
+let inputs = []
+let spans = []
+let pi = 3.14;
+let u1 = -3.5 * pi;
+let u2 = 3.5 * pi;
+let uStep = 0.05;
+let v1 = 0.005 * pi;
+let v2 = pi / 2;
+let vStep = 0.05;
+let C = 2;
+let vl;
+let vs;
+let hs;
+let hl;
+
+
 function deg2rad(angle) {
     return angle * Math.PI / 180;
+}
+
+// Constructor
+function StereoCamera(
+    Convergence,
+    EyeSeparation,
+    AspectRatio,
+    FOV,
+    NearClippingDistance,
+    FarClippingDistance
+) {
+    this.mConvergence = Convergence;
+    this.mEyeSeparation = EyeSeparation;
+    this.mAspectRatio = AspectRatio;
+    this.mFOV = FOV
+    this.mNearClippingDistance = NearClippingDistance;
+    this.mFarClippingDistance = FarClippingDistance;
+    this.mProjectionMatrix;
+    this.mModelViewMatrix;
+
+    this.ApplyLeftFrustum = function () {
+        let top, bottom, left, right;
+
+        top = this.mNearClippingDistance * Math.tan(this.mFOV / 2);
+        bottom = -top;
+
+        const a = this.mAspectRatio * Math.tan(this.mFOV / 2) * this.mConvergence;
+
+        const b = a - this.mEyeSeparation / 2;
+        const c = a + this.mEyeSeparation / 2;
+
+        left = -b * this.mNearClippingDistance / this.mConvergence;
+        right = c * this.mNearClippingDistance / this.mConvergence;
+
+        this.mProjectionMatrix = m4.frustum(left, right, bottom, top,
+            this.mNearClippingDistance, this.mFarClippingDistance)
+        this.mModelViewMatrix = m4.identity()
+        m4.multiply(m4.translation(0.01 * this.mEyeSeparation / 2, 0.0, 0.0), this.mModelViewMatrix, this.mModelViewMatrix);
+    }
+
+    this.ApplyRightFrustum = function () {
+        let top, bottom, left, right;
+
+        top = this.mNearClippingDistance * Math.tan(this.mFOV / 2);
+        bottom = -top;
+
+        const a = this.mAspectRatio * Math.tan(this.mFOV / 2) * this.mConvergence;
+
+        const b = a - this.mEyeSeparation / 2;
+        const c = a + this.mEyeSeparation / 2;
+
+        left = -c * this.mNearClippingDistance / this.mConvergence;
+        right = b * this.mNearClippingDistance / this.mConvergence;
+
+        this.mProjectionMatrix = m4.frustum(left, right, bottom, top,
+            this.mNearClippingDistance, this.mFarClippingDistance)
+        this.mModelViewMatrix = m4.identity()
+        m4.multiply(m4.translation(-0.01 * this.mEyeSeparation / 2, 0.0, 0.0), this.mModelViewMatrix, this.mModelViewMatrix);
+    }
 }
 
 
@@ -16,22 +95,33 @@ function deg2rad(angle) {
 function Model(name) {
     this.name = name;
     this.iVertexBuffer = gl.createBuffer();
-    this.iVertexNormalBuffer = gl.createBuffer();
+    //this.iVertexNormalBuffer = gl.createBuffer();
     this.iTexCoordBuffer = gl.createBuffer();
     this.count = 0;
 
-    this.BufferData = function(vertices) {
+
+    //як було:
+
+    // this.BufferData = function(vertices) {
+    //     gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
+    //     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STREAM_DRAW);
+    //     this.count = vertices.length / 3;
+    // }
+    // this.TexCoordBufferData = function (textures){
+    //     gl.bindBuffer(gl.ARRAY_BUFFER, this.iTexCoordBuffer);
+    //     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textures), gl.STREAM_DRAW);
+    // }
+
+    //як стало:
+
+    this.BufferData = function (vertices, textures) {
+
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STREAM_DRAW);
-        this.count = vertices.length / 3;
-    }
-    this.NormalBufferData = function (normals) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexNormalBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STREAM_DRAW);
-    }
-    this.TexCoordBufferData = function (textures){
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iTexCoordBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textures), gl.STREAM_DRAW);
+
+        this.count = vertices.length / 3;
     }
 
     this.Draw = function() {
@@ -39,9 +129,13 @@ function Model(name) {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
         gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(shProgram.iAttribVertex);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexNormalBuffer);
-        gl.vertexAttribPointer(shProgram.iAttribVertexNormal, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(shProgram.iAttribVertexNormal);
+
+        // gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexNormalBuffer);
+        // gl.vertexAttribPointer(shProgram.iAttribVertexNormal, 3, gl.FLOAT, false, 0, 0);
+        // gl.enableVertexAttribArray(shProgram.iAttribVertexNormal);
+
+
+        // тік у Андрія трохи відрізняється
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iTexCoordBuffer);
         gl.vertexAttribPointer(shProgram.iAttribTexCoord, 2, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(shProgram.iAttribTexCoord);
@@ -60,10 +154,11 @@ function ShaderProgram(name, program) {
 
     // Location of the attribute variable in the shader program.
     this.iAttribVertex = -1;
-    this.iAttribNormalVertex = -1;
+    //this.iAttribNormalVertex = -1;
+
     // Location of the uniform specifying a color for the primitive.
     this.iColor = -1;
-    this.iModelMatrixNormal = -1;   
+    //this.iModelMatrixNormal = -1;   
 
     // Location of the uniform matrix representing the combined transformation.
     this.iModelViewProjectionMatrix = -1;
@@ -84,35 +179,67 @@ function draw() {
 
     /* Set the values of the projection transformation */
     
+    //оце еслі шо змінить
     let projection = m4.orthographic(-3, 3, -3, 3, -3, 3);
 
     /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
 
     let rotateToPointZero = m4.axisRotation([0.707,0.707,0], 0.7);
-    let translateToPointZero = m4.translation(0,0,0);
+
+    //Отут еслі шо помінять на let translateToPointZero = m4.translation(0, 0, -5);
+    let translateToPointZero = m4.translation(0,0,-5);
 
     let matAccum0 = m4.multiply(rotateToPointZero, modelView );
     let matAccum1 = m4.multiply(translateToPointZero, matAccum0 );
 
+    
+    //еслі що [1, 1, 0, 1]
+    //gl.uniform4fv(shProgram.iLight, [1, 1, 1, 1]);
+    gl.uniform4fv(shProgram.iColor, [1, 1, 1, 1]);
+
+    // let normalMatrix = m4.identity();
+    // m4.inverse(modelView, normalMatrix);
+    // normalMatrix = m4.transpose(normalMatrix, normalMatrix);
+
     let modelViewProjection = m4.multiply(projection, matAccum1 );
 
-    let normalMatrix = m4.identity();
-    m4.inverse(modelView, normalMatrix);
-    normalMatrix = m4.transpose(normalMatrix, normalMatrix);
+    //нове
+    camera.ApplyLeftFrustum()
+    modelViewProjection = m4.multiply(camera.mProjectionMatrix, m4.multiply(camera.mModelViewMatrix, matAccum1));
 
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
-    gl.uniformMatrix4fv(shProgram.iNormalMatrix, false, normalMatrix);
 
-    gl.uniform1f(shProgram.iScale, document.getElementById('mash').value)
-    gl.uniform2fv(shProgram.iTranslate, coordinatesForPoint)
+    //нове
+    gl.colorMask(true, false, false, false);
+
+    //gl.uniformMatrix4fv(shProgram.iNormalMatrix, false, normalMatrix);
+
+
+
+    // gl.uniform1f(shProgram.iScale, document.getElementById('mash').value)
+    // gl.uniform2fv(shProgram.iTranslate, coordinatesForPoint)
+
+
     surface.Draw();
-    gl.uniform4fv(shProgram.iLight, [1, 1, 1, 1]);
-    gl.uniform1f(shProgram.iScale, -222)
-    let u = map(coordinatesForPoint[0], 0, 1, -Math.PI, Math.PI);
-    let v = map(coordinatesForPoint[1], 0, 1, -2, 0);
-    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.multiply(modelViewProjection, m4.translation(...creating(2, u, u, v))));
-    showPoint.Draw();
+
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+
+    //повтор нового
+    camera.ApplyRightFrustum()
+    modelViewProjection = m4.multiply(camera.mProjectionMatrix, m4.multiply(camera.mModelViewMatrix, matAccum1));
+    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
+    gl.colorMask(false, true, true, false);
+    surface.Draw();
+
+    gl.colorMask(true, true, true, true);
+
+
+    // gl.uniform1f(shProgram.iScale, -222)
+    // let u = map(coordinatesForPoint[0], 0, 1, -Math.PI, Math.PI);
+    // let v = map(coordinatesForPoint[1], 0, 1, -2, 0);
+    // gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.multiply(modelViewProjection, m4.translation(...creating(2, u, u, v))));
+    // showPoint.Draw();
 }
 
 
@@ -196,7 +323,7 @@ function CreateSurfaceData() {
             vertexTexCoordList.push(map(u2, -Math.PI, Math.PI, 0, 1), map(v2, -a, 0, 0, 1));
         }
     }
-    return [vertexList, normalsList, vertexTexCoordList];
+    return [vertexList, vertexTexCoordList];
 }
 
 function map(value, a, b, c, d) {
@@ -214,31 +341,6 @@ function creating(a, ω1, u1, v1){
 function animating() {
     window.requestAnimationFrame(animating)
     draw()
-}
-
-function CreateSphereData() {
-    let vertexList = [];
-
-    let u = 0,
-        v = 0;
-    while (u < Math.PI * 2) {
-        while (v < Math.PI) {
-            let v1 = getSphereVertex(u, v);
-            let v2 = getSphereVertex(u + 0.1, v);
-            let v3 = getSphereVertex(u, v + 0.1);
-            let v4 = getSphereVertex(u + 0.1, v + 0.1);
-            vertexList.push(v1.x, v1.y, v1.z);
-            vertexList.push(v2.x, v2.y, v2.z);
-            vertexList.push(v3.x, v3.y, v3.z);
-            vertexList.push(v3.x, v3.y, v3.z);
-            vertexList.push(v2.x, v2.y, v2.z);
-            vertexList.push(v4.x, v4.y, v4.z);
-            v += 0.1;
-        }
-        v = 0;
-        u += 0.1;
-    }
-    return vertexList
 }
 
 const radius = 0.1;
@@ -259,24 +361,31 @@ function initGL() {
     shProgram.Use();
 
     shProgram.iAttribVertex = gl.getAttribLocation(prog, "vertex");
-    shProgram.iAttribVertexNormal = gl.getAttribLocation(prog, "normal");
+    //shProgram.iAttribVertexNormal = gl.getAttribLocation(prog, "normal");
     shProgram.iAttribTexCoord = gl.getAttribLocation(prog, "texture");
     shProgram.iModelViewProjectionMatrix = gl.getUniformLocation(prog, "ModelViewProjectionMatrix");
-    shProgram.iNormalMatrix = gl.getUniformLocation(prog, "NormalMatrix");
+    //shProgram.iNormalMatrix = gl.getUniformLocation(prog, "NormalMatrix");
     shProgram.iColor = gl.getUniformLocation(prog, "color");
-    shProgram.iLight = gl.getUniformLocation(prog, "light");
-    shProgram.iTranslate = gl.getUniformLocation(prog, "translate");
-    shProgram.iScale = gl.getUniformLocation(prog, "scale");
+    //shProgram.iLight = gl.getUniformLocation(prog, "light");
+    //shProgram.iTranslate = gl.getUniformLocation(prog, "translate");
+    //shProgram.iScale = gl.getUniformLocation(prog, "scale");
+
+    camera = new StereoCamera(parseFloat(inputs[3].value), parseFloat(inputs[0].value), 1, parseFloat(inputs[1].value), parseFloat(inputs[2].value), 50)
 
     surface = new Model('Surface');
-    let surfaceData = CreateSurfaceData();
-    surface.BufferData(surfaceData[0]);
-    surface.NormalBufferData(surfaceData[1]);
-    surface.TexCoordBufferData(surfaceData[2]);
-    showPoint = new Model('Surface');
-    showPoint.BufferData(CreateSphereData());
-    showPoint.NormalBufferData(CreateSphereData());
-    showPoint.TexCoordBufferData(CreateSphereData());
+    surface.BufferData(...CreateSurfaceData());
+
+    //мейбі оце не треба буде:
+
+    // surface = new Model('Surface');
+    // let surfaceData = CreateSurfaceData();
+    // surface.BufferData(surfaceData[0]);
+    // surface.NormalBufferData(surfaceData[1]);
+    // surface.TexCoordBufferData(surfaceData[2]);
+    // showPoint = new Model('Surface');
+    // showPoint.BufferData(CreateSphereData());
+    // showPoint.NormalBufferData(CreateSphereData());
+    // showPoint.TexCoordBufferData(CreateSphereData());
 
 
     gl.enable(gl.DEPTH_TEST);
@@ -291,6 +400,8 @@ function initGL() {
  * The second and third parameters are strings that contain the
  * source code for the vertex shader and for the fragment shader.
  */
+
+//однаково
 function createProgram(gl, vShader, fShader) {
     let vsh = gl.createShader( gl.VERTEX_SHADER );
     gl.shaderSource(vsh,vShader);
@@ -319,6 +430,29 @@ function createProgram(gl, vShader, fShader) {
  * initialization function that will be called when the page has loaded
  */
 function init() {
+
+    //нове
+    inputs.push(document.getElementById('es'))
+    inputs.push(document.getElementById('fov'))
+    inputs.push(document.getElementById('ncd'))
+    inputs.push(document.getElementById('c'))
+    spans.push(document.getElementById('esSpan'))
+    spans.push(document.getElementById('fovSpan'))
+    spans.push(document.getElementById('ncdSpan'))
+    spans.push(document.getElementById('cSpan'))
+    inputs.forEach((i, ind) => {
+        i.onchange = (e) => {
+            // console.log(i.value)
+            spans[ind].innerHTML = i.value
+            camera.mEyeSeparation = parseFloat(inputs[0].value)
+            camera.mFOV = parseFloat(inputs[1].value)
+            camera.mNearClippingDistance = parseFloat(inputs[2].value)
+            camera.mConvergence = parseFloat(inputs[3].value)
+            draw()
+        }
+    })
+
+    //далі таке саме тільки змінні інші
     let canvas;
     try {
         canvas = document.getElementById("webglcanvas");
@@ -364,21 +498,4 @@ function init() {
     }
 
     animating();
-}
-
-window.onkeydown = (e) => {
-    if (e.keyCode == 87) {
-        coordinatesForPoint[0] = Math.min(coordinatesForPoint[0] + 0.01, 1);
-    }
-    else if (e.keyCode == 83) {
-        coordinatesForPoint[0] = Math.max(coordinatesForPoint[0] - 0.01, 0);
-    }
-    else if (e.keyCode == 65) {
-        coordinatesForPoint[1] = Math.max(coordinatesForPoint[1] - 0.01, 0);
-    }
-    else if (e.keyCode == 68) {
-        coordinatesForPoint[1] = Math.min(coordinatesForPoint[1] + 0.01, 1);
-    }
-    
-    
 }
