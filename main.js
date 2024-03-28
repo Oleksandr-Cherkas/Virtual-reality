@@ -4,7 +4,6 @@ let gl;                         // The webgl context.
 let surface;                    // A surface model
 let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
-
 let reflection;
 let incoming = []
 let range = []
@@ -152,7 +151,6 @@ function draw() {
     let matAccum0 = m4.multiply(rotateToPointZero, modelView );
     let matAccum1 = m4.multiply(translateToPointZero, matAccum0 );
 
-    
     //попередній варіант [1, 1, 0, 1]
     gl.uniform4fv(shProgram.iColor, [1, 1, 1, 1]);
 
