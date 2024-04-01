@@ -8,6 +8,12 @@ let reflection;
 let incoming = []
 let range = []
 
+//нове
+let video;
+let cameraTexture; //reflectionTexture
+let twoTriangles;
+let texture;
+
 
 function deg2rad(angle) {
     return angle * Math.PI / 180;
@@ -154,7 +160,23 @@ function draw() {
     //попередній варіант [1, 1, 0, 1]
     gl.uniform4fv(shProgram.iColor, [1, 1, 1, 1]);
 
-    let modelViewProjection = m4.multiply(projection, matAccum1 );
+    //нове 
+    let modelViewProjection = m4.identity()
+    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
+    gl.bindTexture(gl.TEXTURE_2D, cameraTexture);
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        video
+    );
+    twoTriangles.Draw()
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+
+
+    modelViewProjection = m4.multiply(projection, matAccum1 );
 
     reflection.ApplyLeftFrustum()
     modelViewProjection = m4.multiply(reflection.mProjectionMatrix, m4.multiply(reflection.mModelViewMatrix, matAccum1));
@@ -162,6 +184,9 @@ function draw() {
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
 
     gl.colorMask(true, false, false, false);
+
+    //нове
+    gl.bindTexture(gl.TEXTURE_2D, texture);
 
     surface.Draw();
 
@@ -273,8 +298,8 @@ function creating(a, ω1, u1, v1){
 }
 
 function animating() {
-    window.requestAnimationFrame(animating)
     draw()
+    window.requestAnimationFrame(animating)
 }
 
 const radius = 0.1;
@@ -303,6 +328,15 @@ function initGL() {
 
     surface = new Model('Surface');
     surface.BufferData(...CreateSurfaceData());
+
+    //нове
+    twoTriangles = new Model('Two triangles');
+    twoTriangles.BufferData(
+        [-1, -1, 0, 1, 1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, -1, 1, 0],
+        [1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0]
+    )
+
+
     gl.enable(gl.DEPTH_TEST);
 }
 
@@ -367,6 +401,13 @@ function init() {
     try {
         canvas = document.getElementById("webglcanvas");
         gl = canvas.getContext("webgl");
+
+
+        //нове
+        video = readCamera()
+        cameraTexture = CreateCameraTexture()
+
+
         if ( ! gl ) {
             throw "Browser does not support WebGL";
         }
@@ -387,7 +428,9 @@ function init() {
 
     spaceball = new TrackballRotator(canvas, draw, 0);
     
-    let texture = gl.createTexture();
+    //нове (змінено)
+    texture = gl.createTexture();
+
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
