@@ -9,8 +9,8 @@ let incoming = []
 let range = []
 
 //нове
-let video;
-let cameraTexture; //reflectionTexture
+let showmyself;
+let reflectionTexture;
 let twoTriangles;
 let texture;
 
@@ -163,14 +163,14 @@ function draw() {
     //нове 
     let modelViewProjection = m4.identity()
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
-    gl.bindTexture(gl.TEXTURE_2D, cameraTexture);
+    gl.bindTexture(gl.TEXTURE_2D, reflectionTexture);
     gl.texImage2D(
         gl.TEXTURE_2D,
         0,
         gl.RGBA,
         gl.RGBA,
         gl.UNSIGNED_BYTE,
-        video
+        showmyself
     );
     twoTriangles.Draw()
     gl.clear(gl.DEPTH_BUFFER_BIT);
@@ -404,8 +404,8 @@ function init() {
 
 
         //нове
-        video = readCamera()
-        cameraTexture = CreateCameraTexture()
+        showmyself = readCamera()
+        reflectionTexture = CreateCameraTexture()
 
 
         if ( ! gl ) {
