@@ -14,6 +14,8 @@ let reflectionTexture;
 let twoTriangles;
 let texture;
 
+let audioSurface;
+
 
 function deg2rad(angle) {
     return angle * Math.PI / 180;
@@ -158,11 +160,12 @@ function draw() {
     let matAccum1 = m4.multiply(translateToPointZero, matAccum0 );
 
     //попередній варіант [1, 1, 0, 1]
-    gl.uniform4fv(shProgram.iColor, [1, 1, 1, 1]);
+    gl.uniform4fv(shProgram.iColor, [1, 1, 1, 1]); //
 
     //нове 
-    let modelViewProjection = m4.identity()
+    let modelViewProjection = m4.identity() //
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
+
     gl.bindTexture(gl.TEXTURE_2D, reflectionTexture);
     gl.texImage2D(
         gl.TEXTURE_2D,
@@ -176,6 +179,21 @@ function draw() {
     gl.clear(gl.DEPTH_BUFFER_BIT);
 
 
+    //нове 2
+    const t = Date.now() * 0.001;
+    let translate = {x : Math.cos(t) + 1, y : Math.sin(t) + 1, z: 1};
+    gl.uniform3fv(shProgram.iTranslateSphere, [translate.x, translate.y, translate.z])
+    gl.uniform1f(shProgram.iB, 1);
+    // sphere.DrawSphere();
+    if (panner) {
+        // console.log(t)
+        panner.setPosition(Math.cos(t) + 1, Math.sin(t) + 1, 1);
+    }
+    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.multiply(m4.identity(), m4.multiply(m4.translation(Math.cos(t), Math.sin(t), 0), m4.scaling(0.1, 0.1, 0.1))));
+    audioSurface.Draw();
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+
+
     modelViewProjection = m4.multiply(projection, matAccum1 );
 
     reflection.ApplyLeftFrustum()
@@ -184,6 +202,8 @@ function draw() {
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
 
     gl.colorMask(true, false, false, false);
+
+
 
     //нове
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -201,6 +221,37 @@ function draw() {
     gl.colorMask(true, true, true, true);
 }
 
+function CreateSphereSurfaceData(r = 1) {
+    let vertexList = [];
+    let lon = -Math.PI;
+    let lat = -Math.PI * 0.5;
+    const STEP = 0.1;
+    while (lon < Math.PI) {
+        while (lat < Math.PI * 0.5) {
+            let v1 = sphereVertex(r, lon, lat);
+            let v2 = sphereVertex(r, lon + STEP, lat);
+            let v3 = sphereVertex(r, lon, lat + STEP);
+            let v4 = sphereVertex(r, lon + STEP, lat + STEP);
+            vertexList.push(v1.x, v1.y, v1.z);
+            vertexList.push(v2.x, v2.y, v2.z);
+            vertexList.push(v3.x, v3.y, v3.z);
+            vertexList.push(v3.x, v3.y, v3.z);
+            vertexList.push(v4.x, v4.y, v4.z);
+            vertexList.push(v2.x, v2.y, v2.z);
+            lat += STEP;
+        }
+        lat = -Math.PI * 0.5
+        lon += STEP;
+    }
+    return vertexList;
+}
+
+function sphereVertex(r, u, v) {
+    let x = r * Math.sin(u) * Math.cos(v);
+    let y = r * Math.sin(u) * Math.sin(v);
+    let z = r * Math.cos(u);
+    return { x: x, y: y, z: z };
+}
 
 
 function getDerivative1(a, ω1, u1, v, delta) {
@@ -336,6 +387,11 @@ function initGL() {
         [1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0]
     )
 
+    audioSurface = new Model('Surface3')
+    audioSurface.BufferData(
+        CreateSphereSurfaceData(),
+        new Array(CreateSphereSurfaceData().length).fill(0)
+    )
 
     gl.enable(gl.DEPTH_TEST);
 }
@@ -451,4 +507,52 @@ function init() {
     }
 
     animating();
+}
+
+let checkbox,
+    audio,
+    source,
+    biquadFilter,
+    panner,
+    context;
+// Audio context initialization
+function initAudio() {
+    checkbox = document.getElementById('filterState');
+    audio = document.getElementById('audioContext');
+
+    audio.addEventListener('play', () => {
+        if (!context) {
+            context = new (window.AudioContext || window.webkitAudioContext)();
+            source = context.createMediaElementSource(audio);
+            panner = context.createPanner();
+            biquadFilter = context.createBiquadFilter();
+
+            source.connect(panner);
+            panner.connect(biquadFilter);
+            biquadFilter.connect(context.destination);
+
+            biquadFilter.type = 'lowpass';
+            biquadFilter.Q.value = 1;
+            biquadFilter.frequency.value = 350;
+            biquadFilter.gain.value = 0;
+            biquadFilter.detune.value = 0;
+
+            context.resume();
+        }
+    })
+    audio.addEventListener('pause', () => {
+        console.log('pause');
+        context.resume();
+    })
+    checkbox.addEventListener('change', function () {
+        if (checkbox.checked) {
+            panner.disconnect();
+            panner.connect(biquadFilter);
+            biquadFilter.connect(context.destination);
+        } else {
+            panner.disconnect();
+            panner.connect(context.destination);
+        }
+    });
+    audio.play();
 }
