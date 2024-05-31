@@ -2,4 +2,4 @@
 
 Виконав - Черкас Олександр, група ТР-32мп.
 
-![Відео](./CGW.mp4)
+https://github.com/Oleksandr-Cherkas/Virtual-reality/raw/main/CGW.mp4
