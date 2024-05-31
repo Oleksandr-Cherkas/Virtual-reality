@@ -15,7 +15,7 @@ let twoTriangles;
 let texture;
 
 let sphere;
-let audio, source, filterNow, lowfilter, panner, context;
+let audio, audiosource, filterNow, lowfilter, panner, context;
 
 function deg2rad(angle) {
     return angle * Math.PI / 180;
@@ -49,13 +49,6 @@ function Model(name) {
         gl.enableVertexAttribArray(shProgram.iAttribTexCoord);
         
         gl.drawArrays(gl.TRIANGLES, 0, this.count);
-    }
-
-    this.Draw2 = function () {
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
-        gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(shProgram.iAttribVertex);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, this.count);
     }
 }
 
@@ -185,21 +178,15 @@ function draw() {
     gl.clear(gl.DEPTH_BUFFER_BIT);
 
 
-    //нове ргр
-    const timeframe = Date.now() * 0.001;
-    // let translate = {x : Math.cos(timeframe), y : Math.sin(timeframe), z: 0};
-    // gl.uniform3fv(shProgram.iTranslateSphere, [translate.x, translate.y, translate.z])
-    // gl.uniform1f(shProgram.iB, 1);
+    //нове (ргр)
+    const timeframe = 0.001 * Date.now();
     if (panner) {
-        panner.setPosition(Math.cos(timeframe)*2, Math.sin(timeframe)*2, 1);
+        panner.setPosition(Math.cos(timeframe), Math.sin(timeframe)/2, 1);
     }
-    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.multiply(m4.identity(), m4.multiply(m4.translation(Math.cos(timeframe), Math.sin(timeframe), 1), m4.scaling(1, 1, 1))));
-    sphere.Draw2();
-    
+    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, m4.multiply(m4.identity(),
+        m4.multiply(m4.translation(Math.cos(timeframe), Math.sin(timeframe)/2, 1), m4.scaling(1, 1, 1))));
+    sphere.Draw();
     gl.clear(gl.DEPTH_BUFFER_BIT);
-
-
-
 
     
 
@@ -519,19 +506,17 @@ function initAudio() {
     audio.addEventListener('play', () => {
         if (!context) {
             context = new (window.AudioContext || window.webkitAudioContext)();
-            source = context.createMediaElementSource(audio);
+            audiosource = context.createMediaElementSource(audio);
             lowfilter = context.createBiquadFilter();
             panner = context.createPanner();
 
-            source.connect(panner);
+            audiosource.connect(panner);
             panner.connect(lowfilter);
             lowfilter.connect(context.destination);
 
             lowfilter.type = 'lowpass';
             lowfilter.Q.value = 1;
             lowfilter.frequency.value = 350;
-            lowfilter.gain.value = 0;
-            lowfilter.detune.value = 0;
 
             context.resume();
         }
