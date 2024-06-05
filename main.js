@@ -499,9 +499,14 @@ function init() {
     animating();
 }
 
-function initAudio() {
+let forFrequencyInput, forQinput;
+function initForAudio() {
     filterNow = document.getElementById('filterState');
     audio = document.getElementById('audioContext');
+    forFrequencyInput = document.getElementById("forFrequency");
+    forQinput = document.getElementById("forQ");
+    forFrequencyInput.addEventListener("input", draw);
+    forQinput.addEventListener("input", draw)
 
     audio.addEventListener('play', () => {
         if (!context) {
@@ -515,14 +520,20 @@ function initAudio() {
             lowfilter.connect(context.destination);
 
             lowfilter.type = 'lowpass';
-            lowfilter.Q.value = 1;
-            lowfilter.frequency.value = 350;
+            lowfilter.frequency.value = forFrequencyInput.value;
+            lowfilter.Q.value = forQinput.value;
 
             context.resume();
         }
     })
     audio.addEventListener('pause', () => {
         context.resume();
+    })
+    forFrequencyInput.addEventListener('change', function () {
+        lowfilter.frequency.value = forFrequencyInput.value;
+    })
+    forQinput.addEventListener('change', function () {
+        lowfilter.Q.value = forQinput.value;
     })
     filterNow.addEventListener('change', function () {
         if (filterNow.checked) {

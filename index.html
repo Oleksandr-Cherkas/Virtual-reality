@@ -22,9 +22,30 @@
       (On a touch screen, you can use your finger.)</p>
 
     <audio src="https://raw.githubusercontent.com/Oleksandr-Cherkas/Virtual-reality/main/Get-A-Way.mp3" id="audioContext" controls loop crossorigin="anonymous"></audio><br>
-    <button onclick=" initAudio()">Initialize audio</button>
+    <button onclick=" initForAudio()">Initialize audio</button>
     <label for="filterState">Filter activity</label>
-    <input type="checkbox" name="filterState" id="filterState" checked /><br><br>
+    <input type="checkbox" name="filterState" id="filterState" checked />
+    <div class="forinputs">
+      <div>
+        <label for="forFrequency">Cutoff frequency: </label>
+        <input type="range" id="forFrequency" name="forFrequency" min="0" max="1000" step="1" value="500" onchange="initForAudio()"
+        />
+      </div>
+      <div>
+        <label for="forQ">Quality: </label>
+        <input type="range" id="forQ" name="forQ" min="-3" max="10" step="0.1" value="1" onchange="initForAudio()"
+        />
+      </div>
+  </div>
+
+  <div id="canvas-holder">
+    <canvas
+      width="600"
+      height="600"
+      id="webglcanvas"
+      style="background-color: red"
+    ></canvas>
+  </div>
 
     <!-- <label for="mash">Масштабування</label>
     <input type="range" name="mash" id="mash" min="0" max="2" step="0.01" value='1'> -->
@@ -55,13 +76,6 @@
         <span id="c1">1000</span>
       </div>
     </div>
-    <div id="canvas-holder">
-      <canvas
-        width="600"
-        height="600"
-        id="webglcanvas"
-        style="background-color: red"
-      ></canvas>
-    </div>
+    
   </body>
 </html>
