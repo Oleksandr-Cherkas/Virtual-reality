@@ -4,4 +4,4 @@
 
 Перероблено - додано регулювання частоти та якості фільтра.
 
-![Відео](./CGW.mp4)
+https://github.com/Oleksandr-Cherkas/Virtual-reality/raw/main/CGW.mp4
